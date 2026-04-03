@@ -73,9 +73,17 @@ def predict():
 
     with torch.no_grad():
         out = model(x)
-        _, pred = torch.max(out, 1)
-
-    prediction = "Normal" if pred.item() == 0 else "Cancer"
+        probabilities = torch.nn.functional.softmax(out, dim=1)
+        cancer_prob = probabilities[0][0].item()
+        normal_prob = probabilities[0][1].item()
+        
+        # Class 0 was learned as Cancer, Class 1 was learned as Normal
+        if cancer_prob > 0.50:
+            prediction = "Cancer"
+            confidence_val = cancer_prob
+        else:
+            prediction = "Normal"
+            confidence_val = normal_prob
 
     # Generate GradCAM heatmap
     heatmap_path = generate_heatmap(img_path)
@@ -86,6 +94,7 @@ def predict():
 
     return jsonify({
         "prediction": prediction,
+        "confidence": round(confidence_val * 100, 2),
         "heatmap_url": "/static/heatmap.jpg"
     })
 
